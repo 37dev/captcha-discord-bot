@@ -1,0 +1,8 @@
+aiohttp==3.6.3
+async-timeout==3.0.1
+attrs==21.2.0
+chardet==3.0.4
+enhanced-dpy==1.7.3.7.post6
+idna==3.3
+multidict==4.7.6
+yarl==1.5.1
