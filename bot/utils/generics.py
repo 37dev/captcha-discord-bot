@@ -1,4 +1,5 @@
 import json
+import secrets
 
 
 def get_guild_prefix(bot, message):
@@ -33,6 +34,7 @@ def get_config(guild_id):
             "language": "english",
             "captcha": False,
             "captcha_channel": False,
+            "captcha_images_channel": False,
             "log_channel": 1,
             "temporary_role": 1,
             "role_given_after_captcha": False,
@@ -53,3 +55,8 @@ def update_config(guild_id, guild_config):
     new_data = json.dumps(data, indent=4, ensure_ascii=False)
     with open("config.json", "w") as config:
         config.write(new_data)
+
+
+def system_rng():
+    rng = secrets.SystemRandom()
+    return rng

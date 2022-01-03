@@ -10,8 +10,8 @@ class OnChannelCreate(commands.Cog, name="on channel create"):
 
     @commands.Cog.listener()
     async def on_guild_channel_create(self, channel):
-        data = get_config(channel.guild.id)
-        temporary_role = get(channel.guild.roles, id=data["temporary_role"])
+        config = get_config(channel.guild.id)
+        temporary_role = get(channel.guild.roles, id=config["temporary_role"])
 
         if temporary_role is not None:
             if isinstance(channel, discord.TextChannel):

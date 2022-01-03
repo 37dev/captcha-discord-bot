@@ -4,6 +4,7 @@ from discord.ext import commands
 from discord.utils import get
 from discord.errors import HTTPException
 from bot.utils.generics import get_config, update_config
+from bot.views.captcha import VerifyMeView
 from bot.views.generics import ConfirmationView
 
 
@@ -89,10 +90,16 @@ class CaptchaCog(commands.Cog, name="Setup Captcha command"):
                         await captcha_channel.set_permissions(ctx.guild.default_role, overwrite=perms)
 
                         await captcha_channel.edit(slowmode_delay=5)
+
+                        # Create captcha images channel
+                        captcha_images_channel = await ctx.guild.create_text_channel('captcha-images-channel')
+                        perms = captcha_images_channel.overwrites_for(ctx.guild.default_role)
+                        perms.read_messages = False
+                        await captcha_images_channel.set_permissions(ctx.guild.default_role, overwrite=perms)
+
                         # Create log channel
                         if config["log_channel"] is False:
                             log_channel = await ctx.guild.create_text_channel(f"{self.bot.user.name}-logs")
-
                             perms = log_channel.overwrites_for(ctx.guild.default_role)
                             perms.read_messages = False
                             await log_channel.set_permissions(ctx.guild.default_role, overwrite=perms)
@@ -102,8 +109,25 @@ class CaptchaCog(commands.Cog, name="Setup Captcha command"):
                         config["captcha"] = True
                         config["temporary_role"] = temporary_role.id
                         config["captcha_channel"] = captcha_channel.id
+                        config["captcha_images_channel"] = captcha_images_channel.id
 
                         update_config(ctx.guild.id, config)
+
+                        embed = nextcord.Embed(
+                            title="**Server Verification**",
+                            description="To prevent bot abuse, new members are required to verify in this server. "
+                                        "Please complete the verification promptly, or you risk being kicked from the "
+                                        "server.\nPress the button below to begin the verification process",
+                            color=0x2fa737
+                        )
+                        embed.set_author(
+                            name="",
+                            icon_url=""
+                        )
+                        embed.set_thumbnail(
+                            url=""
+                        )
+                        await captcha_channel.send(embed=embed, view=VerifyMeView())
 
                         await loading.delete()
                         embed = nextcord.Embed(
@@ -140,13 +164,19 @@ class CaptchaCog(commands.Cog, name="Setup Captcha command"):
             try:
                 temporary_role = get(ctx.guild.roles, id=config["temporary_role"])
                 await temporary_role.delete()
-            except (HTTPException, AttributeError):
+            except (HTTPException, AttributeError, KeyError):
                 not_deleted.append("temporary_role")
             try:
                 captcha_channel = self.bot.get_channel(config["captcha_channel"])
                 await captcha_channel.delete()
-            except (HTTPException, AttributeError):
+            except (HTTPException, AttributeError, KeyError):
                 not_deleted.append("captcha_channel")
+
+            try:
+                captcha_images_channel = self.bot.get_channel(config["captcha_images_channel"])
+                await captcha_images_channel.delete()
+            except (HTTPException, AttributeError, KeyError):
+                not_deleted.append("captcha_images_channel")
 
             # Add modifications
             config["captcha_channel"] = False
