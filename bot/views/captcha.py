@@ -46,17 +46,27 @@ class CaptchaButton(nextcord.ui.Button['CaptchaView']):
         self.view.clicked_letters.append(self.label)
         self.style = nextcord.ButtonStyle.danger
 
+        await interaction.response.edit_message(view=self.view)
+
         # check if last column was pressed
         if self.view.is_captcha_completed:
             if self.view.is_captcha_valid:
                 self.view.captcha_valid = True
                 self.view.stop()
+                return
 
             if self.view.can_retry:
-                # recreate captcha for same user
                 await self.view.retry_captcha(interaction=interaction)
+                return
 
-        await interaction.response.edit_message(view=self.view)
+
+class NewCaptchaButton(nextcord.ui.Button['CaptchaView']):
+    def __init__(self):
+        super().__init__(style=nextcord.ButtonStyle.danger, emoji="🔄", label="New Captcha")
+
+    async def callback(self, interaction):
+        await self.view.retry_captcha(interaction=interaction)
+        return
 
 
 class CaptchaView(nextcord.ui.View, BaseCaptchaView):
@@ -74,6 +84,11 @@ class CaptchaView(nextcord.ui.View, BaseCaptchaView):
         self.max_retries = max_retries
         self.retries = 0
         self.captcha_valid = False
+        self.get_buttons()
+
+    def get_buttons(self):
+        if self.children:
+            self.clear_items()
 
         for column in range(self.columns):
             captcha_column_letters = self._get_column_letters(column)
@@ -81,6 +96,8 @@ class CaptchaView(nextcord.ui.View, BaseCaptchaView):
                 # for each column, we add a letter per row
                 row_letter = captcha_column_letters.pop()
                 self.add_item(CaptchaButton(row, column, label=row_letter))
+
+        self.add_item(NewCaptchaButton())
 
     async def retry_captcha(self, interaction):
         captcha = Captcha(member=interaction.user)
@@ -93,7 +110,9 @@ class CaptchaView(nextcord.ui.View, BaseCaptchaView):
         captcha_embed = self.get_captcha_embed(captcha_view=self)
         captcha_embed.set_image(url=captcha_image_url)
 
-        await interaction.response.edit_message(view=self, embed=captcha_embed, ephemeral=True)
+        self.get_buttons()
+
+        await interaction.response.edit_message(view=self, embed=captcha_embed)
 
     def _get_columns(self):
         text = self.captcha.text
