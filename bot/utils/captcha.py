@@ -18,7 +18,7 @@ class Captcha:
 
     def _generate_image(self):
         random = system_rng()
-        image = np.zeros(shape=(100, 350, 3), dtype=np.uint8)
+        image = np.zeros(shape=(100, 320, 3), dtype=np.uint8)
 
         image = Image.fromarray(image + 255)  # +255 : black to white
 
