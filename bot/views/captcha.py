@@ -50,6 +50,7 @@ class CaptchaButton(nextcord.ui.Button['CaptchaView']):
         if self.view.is_captcha_completed:
             if self.view.is_captcha_valid:
                 self.view.captcha_valid = True
+                await self.view.captcha_complete(interaction)
                 self.view.stop()
                 return
 
@@ -58,8 +59,8 @@ class CaptchaButton(nextcord.ui.Button['CaptchaView']):
                 await self.view.new_captcha(interaction=interaction)
                 return
             else:
-                self.view.stop()
                 await self.view.captcha_kick(interaction)
+                self.view.stop()
                 return
 
         await interaction.response.edit_message(view=self.view)
@@ -168,6 +169,18 @@ class CaptchaView(nextcord.ui.View, BaseCaptchaView):
         await asyncio.sleep(timer)
         await interaction.guild.kick(interaction.user)
 
+    @staticmethod
+    async def captcha_complete(interaction):
+        embed = nextcord.Embed(
+            title="Captcha Complete",
+            description=f"You has completed the captcha",
+            color=0x2fa737
+        )  # Red
+        await interaction.response.edit_message(
+            embed=embed,
+            view=None
+        )
+
     @property
     def is_captcha_completed(self):
         if self.disabled_columns == self.columns:
@@ -184,15 +197,18 @@ class CaptchaView(nextcord.ui.View, BaseCaptchaView):
 
 
 class VerifyMeView(nextcord.ui.View, BaseCaptchaView):
-    def __init__(self):
-        super().__init__()
-        self.running_captcha = False
+    current_users = set()
 
-    @nextcord.ui.button(label='Verify Me!', style=nextcord.ButtonStyle.green)
+    def __init__(self):
+        super().__init__(timeout=None)
+
+    @nextcord.ui.button(label='Verify Me!', style=nextcord.ButtonStyle.green, custom_id='persistent_view:send_captcha')
     async def send_captcha(self, button, interaction):
+        if interaction.user.id in self.current_users:
+            return
+
         config = get_config(interaction.guild.id)
 
-        self.running_captcha = True
         captcha = Captcha(member=interaction.user)
         captcha.generate()
 
@@ -203,7 +219,7 @@ class VerifyMeView(nextcord.ui.View, BaseCaptchaView):
         captcha_embed.set_image(url=captcha_image_url)
 
         await interaction.response.send_message(view=captcha_view, embed=captcha_embed, ephemeral=True)
-
+        self.current_users.add(interaction.user.id)
         await captcha_view.wait()
 
         if captcha_view.captcha_valid:
