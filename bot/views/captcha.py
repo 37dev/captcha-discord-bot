@@ -170,7 +170,7 @@ class CaptchaView(nextcord.ui.View, BaseCaptchaView):
     async def captcha_kick(interaction, timer=5):
         embed = nextcord.Embed(
             title="Captcha Failed",
-            description=f"You has failed the captcha and will be kicked in {timer} seconds.",
+            description=f"You have failed the captcha and will be kicked in {timer} seconds.",
             color=0xe00000
         )  # Red
         await interaction.response.edit_message(
@@ -183,8 +183,8 @@ class CaptchaView(nextcord.ui.View, BaseCaptchaView):
     @staticmethod
     async def captcha_complete(interaction):
         embed = nextcord.Embed(
-            title="Captcha Complete",
-            description=f"You has completed the captcha",
+            title="Captcha Completed",
+            description=f"You have completed the captcha",
             color=0x2fa737
         )  # Red
         await interaction.response.edit_message(
