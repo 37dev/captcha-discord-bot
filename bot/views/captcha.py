@@ -68,7 +68,12 @@ class CaptchaButton(nextcord.ui.Button['CaptchaView']):
 
 class NewCaptchaButton(nextcord.ui.Button['CaptchaView']):
     def __init__(self):
-        super().__init__(style=nextcord.ButtonStyle.danger, emoji="🔄", label="New Captcha")
+        super().__init__(
+            style=nextcord.ButtonStyle.danger,
+            emoji="🔄",
+            label="New Captcha",
+            custom_id='persistent_view:new_captcha'
+        )
 
     async def callback(self, interaction):
         await self.view.new_captcha(interaction=interaction)
@@ -79,8 +84,8 @@ class CaptchaView(nextcord.ui.View, BaseCaptchaView):
     # pycharm linter needs it
     children: List[CaptchaButton]
 
-    def __init__(self, rows, captcha, max_attempts=3):
-        super().__init__()
+    def __init__(self, rows=None, captcha=None, max_attempts=3):
+        super().__init__(timeout=None)
         self.captcha = captcha
         self.rows = rows
         self.columns = self._get_columns()
@@ -93,6 +98,9 @@ class CaptchaView(nextcord.ui.View, BaseCaptchaView):
         self._init_captcha_buttons()
 
     def _init_captcha_buttons(self):
+        if not self.columns:
+            return
+
         for column in range(self.columns):
             captcha_column_letters = self._get_column_letters(column)
             for row in range(self.rows):
@@ -128,6 +136,9 @@ class CaptchaView(nextcord.ui.View, BaseCaptchaView):
         await interaction.response.edit_message(view=self, embed=captcha_embed)
 
     def _get_columns(self):
+        if not self.captcha:
+            return None
+
         text = self.captcha.text
         columns = len(text.replace(" ", ""))
         return columns
