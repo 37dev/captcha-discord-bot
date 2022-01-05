@@ -114,9 +114,9 @@ class CaptchaCog(commands.Cog, name="Setup Captcha command"):
 
                         embed = nextcord.Embed(
                             title="**Server Verification**",
-                            description="To prevent bot abuse, new members are required to verify in this server. "
-                                        "Please complete the verification promptly, or you risk being kicked from the "
-                                        "server.\nPress the button below to begin the verification process",
+                            description="To prevent bot abuse, new members are required to verify in this server. \n\n"
+                                        "__Please complete the verification promptly, or you risk being kicked from "
+                                        "the server.__\n\nPress the button below to begin the verification process",
                             color=0x2fa737
                         )
                         embed.set_author(
