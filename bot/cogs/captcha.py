@@ -205,12 +205,13 @@ class CaptchaCog(commands.Cog, name="Setup Captcha command"):
                     update_config(ctx.guild.id, config)
 
                     await loading.delete()
-                    embed = nextcord.Embed(
-                        title=self.bot.translate.message(ctx.guild.id, "captcha", "CAPTCHA_WAS_DELETED_WITH_SUCCESS"),
-                        description=self.bot.translate.message(ctx.guild.id, "captcha",
-                                                               "CAPTCHA_WAS_DELETED_WITH_SUCCESS_DESCRIPTION"),
-                        color=0x2fa737)  # Green
-                    await ctx.channel.send(embed=embed)
+                    if not not_deleted:
+                        embed = nextcord.Embed(
+                            title=self.bot.translate.message(ctx.guild.id, "captcha", "CAPTCHA_WAS_DELETED_WITH_SUCCESS"),
+                            description=self.bot.translate.message(ctx.guild.id, "captcha",
+                                                                   "CAPTCHA_WAS_DELETED_WITH_SUCCESS_DESCRIPTION"),
+                            color=0x2fa737)  # Green
+                        await ctx.channel.send(embed=embed)
                     if len(not_deleted) > 0:
                         errors = ", ".join(not_deleted)
                         embed = nextcord.Embed(

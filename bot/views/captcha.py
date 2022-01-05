@@ -1,6 +1,6 @@
+import asyncio
 import string
 
-import discord
 import nextcord
 
 from typing import List
@@ -17,7 +17,7 @@ class BaseCaptchaView:
         captcha_embed = nextcord.Embed(
             title="**Complete the Captcha!**",
             description=f"Press each letter one-by-one using the buttons below.\n"
-                        f"Attempt {captcha_view.retries}/{captcha_view.max_retries}",
+                        f"Attempt {captcha_view.attempt}/{captcha_view.max_attempts}",
             color=0x2fa737
         )
 
@@ -46,8 +46,6 @@ class CaptchaButton(nextcord.ui.Button['CaptchaView']):
         self.view.clicked_letters.append(self.label)
         self.style = nextcord.ButtonStyle.danger
 
-        await interaction.response.edit_message(view=self.view)
-
         # check if last column was pressed
         if self.view.is_captcha_completed:
             if self.view.is_captcha_valid:
@@ -56,8 +54,15 @@ class CaptchaButton(nextcord.ui.Button['CaptchaView']):
                 return
 
             if self.view.can_retry:
-                await self.view.retry_captcha(interaction=interaction)
+                self.view.attempt += 1
+                await self.view.new_captcha(interaction=interaction)
                 return
+            else:
+                self.view.stop()
+                await self.view.captcha_kick(interaction)
+                return
+
+        await interaction.response.edit_message(view=self.view)
 
 
 class NewCaptchaButton(nextcord.ui.Button['CaptchaView']):
@@ -65,7 +70,7 @@ class NewCaptchaButton(nextcord.ui.Button['CaptchaView']):
         super().__init__(style=nextcord.ButtonStyle.danger, emoji="🔄", label="New Captcha")
 
     async def callback(self, interaction):
-        await self.view.retry_captcha(interaction=interaction)
+        await self.view.new_captcha(interaction=interaction)
         return
 
 
@@ -73,7 +78,7 @@ class CaptchaView(nextcord.ui.View, BaseCaptchaView):
     # pycharm linter needs it
     children: List[CaptchaButton]
 
-    def __init__(self, rows, captcha, max_retries=3):
+    def __init__(self, rows, captcha, max_attempts=3):
         super().__init__()
         self.captcha = captcha
         self.rows = rows
@@ -81,15 +86,12 @@ class CaptchaView(nextcord.ui.View, BaseCaptchaView):
         self.clicked_letters = []
         self.captcha_completed = False
         self.disabled_columns = 0
-        self.max_retries = max_retries
-        self.retries = 0
+        self.max_attempts = max_attempts
+        self.attempt = 1
         self.captcha_valid = False
-        self.get_buttons()
+        self._init_captcha_buttons()
 
-    def get_buttons(self):
-        if self.children:
-            self.clear_items()
-
+    def _init_captcha_buttons(self):
         for column in range(self.columns):
             captcha_column_letters = self._get_column_letters(column)
             for row in range(self.rows):
@@ -99,18 +101,28 @@ class CaptchaView(nextcord.ui.View, BaseCaptchaView):
 
         self.add_item(NewCaptchaButton())
 
-    async def retry_captcha(self, interaction):
+    def _clear_state(self):
+        self.disabled_columns = 0
+        if self.children:
+            self.clear_items()
+        if self.clicked_letters:
+            self.clicked_letters.clear()
+
+    def _get_new_captcha_buttons(self):
+        self._clear_state()
+        self._init_captcha_buttons()
+
+    async def new_captcha(self, interaction):
         captcha = Captcha(member=interaction.user)
         captcha.generate()
 
         # refresh captcha
         self.captcha = captcha
+        self._get_new_captcha_buttons()
 
         captcha_image_url = await self.get_captcha_image_url(captcha, interaction.user)
         captcha_embed = self.get_captcha_embed(captcha_view=self)
         captcha_embed.set_image(url=captcha_image_url)
-
-        self.get_buttons()
 
         await interaction.response.edit_message(view=self, embed=captcha_embed)
 
@@ -135,11 +147,26 @@ class CaptchaView(nextcord.ui.View, BaseCaptchaView):
         return random_letters
 
     def disable_clicked_column(self, column):
-        for children in self.children:
+        # ignore retry button
+        for children in self.children[:-1]:
             if children.column == column:
                 children.disabled = True
 
         self.disabled_columns += 1
+
+    @staticmethod
+    async def captcha_kick(interaction, timer=5):
+        embed = nextcord.Embed(
+            title="Captcha Failed",
+            description=f"You has failed the captcha and will be kicked in {timer} seconds.",
+            color=0xe00000
+        )  # Red
+        await interaction.response.edit_message(
+            embed=embed,
+            view=None
+        )
+        await asyncio.sleep(timer)
+        await interaction.guild.kick(interaction.user)
 
     @property
     def is_captcha_completed(self):
@@ -153,7 +180,7 @@ class CaptchaView(nextcord.ui.View, BaseCaptchaView):
 
     @property
     def can_retry(self):
-        return self.retries < self.max_retries
+        return self.attempt < self.max_attempts
 
 
 class VerifyMeView(nextcord.ui.View, BaseCaptchaView):
