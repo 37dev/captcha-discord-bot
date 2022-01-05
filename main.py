@@ -3,10 +3,28 @@ import os
 from discord.ext import commands
 from bot.utils.generics import get_guild_prefix, get_token_from_config
 from bot.utils.translation import Translator
+from bot.views.captcha import VerifyMeView
 
 intents = nextcord.Intents.default()
 intents.members = True
-bot = commands.Bot(get_guild_prefix, intents=intents)
+
+
+class Bot(commands.Bot):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.persistent_views_added = False
+
+    async def on_ready(self):
+        if not self.persistent_views_added:
+            self.add_view(VerifyMeView())
+            self.persistent_views_added = True
+
+        print(f'We have logged in as {bot.user}')
+        print(nextcord.__version__)
+        await bot.change_presence(activity=nextcord.Activity(type=nextcord.ActivityType.watching, name=f"Captchas!"))
+
+
+bot = Bot(get_guild_prefix, intents=intents)
 
 bot.translate = Translator()
 
@@ -17,14 +35,8 @@ if __name__ == '__main__':
             bot.load_extension(f"bot.cogs.{filename[:-3]}")
 
 
-@bot.event
-async def on_ready():
-    print(f'We have logged in as {bot.user}')
-    print(nextcord.__version__)
-    await bot.change_presence(activity=nextcord.Activity(type=nextcord.ActivityType.watching, name=f"?help"))
-
-
 bot.run(get_token_from_config())
+
 """
 # setup logging
 logger = logging.getLogger('discord')
