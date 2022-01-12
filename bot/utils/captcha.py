@@ -3,7 +3,7 @@ import shutil
 import string
 
 import Augmentor
-import discord
+import nextcord
 import numpy as np
 from PIL import ImageFont, ImageDraw, Image
 
@@ -87,7 +87,7 @@ class Captcha:
         image.save(f"{image_folder_path}/output/{captcha_name}_2.png")
 
         # Send captcha
-        captcha_file = discord.File(f"{image_folder_path}/output/{captcha_name}_2.png")
+        captcha_file = nextcord.File(f"{image_folder_path}/output/{captcha_name}_2.png")
 
         # Remove captcha folder
         try:

@@ -1,7 +1,9 @@
-import discord
-from bot.utils.generics import get_config
+import nextcord
+
 from discord.ext import commands
-from discord.utils import get
+from nextcord.utils import get
+
+from bot.utils.generics import get_config
 
 
 class OnChannelCreate(commands.Cog, name="on channel create"):
@@ -11,20 +13,20 @@ class OnChannelCreate(commands.Cog, name="on channel create"):
     @commands.Cog.listener()
     async def on_guild_channel_create(self, channel):
         config = get_config(channel.guild.id)
-        temporary_role = get(channel.guild.roles, id=config["temporary_role"])
+        unverified_role = get(channel.guild.roles, id=config["captcha_settings"]["unverified_role"])
 
-        if temporary_role is not None:
-            if isinstance(channel, discord.TextChannel):
-                perms = channel.overwrites_for(temporary_role)
+        if unverified_role is not None:
+            if isinstance(channel, nextcord.TextChannel):
+                perms = channel.overwrites_for(unverified_role)
                 perms.read_messages = False
-                await channel.set_permissions(temporary_role, overwrite=perms)
+                await channel.set_permissions(unverified_role, overwrite=perms)
 
-            elif isinstance(channel, discord.VoiceChannel):
+            elif isinstance(channel, nextcord.VoiceChannel):
 
-                perms = channel.overwrites_for(temporary_role)
+                perms = channel.overwrites_for(unverified_role)
                 perms.read_messages = False
                 perms.connect = False
-                await channel.set_permissions(temporary_role, overwrite=perms)
+                await channel.set_permissions(unverified_role, overwrite=perms)
 
 
 def setup(bot):

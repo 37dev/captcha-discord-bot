@@ -1,8 +1,9 @@
 import nextcord
 import asyncio
 from discord.ext import commands
-from discord.utils import get
 from discord.errors import HTTPException
+from nextcord.utils import get
+
 from bot.utils.generics import get_config, update_config
 from bot.views.captcha import VerifyMeView
 from bot.views.generics import ConfirmationView
@@ -61,29 +62,37 @@ class CaptchaCog(commands.Cog, name="Setup Captcha command"):
                             self.bot.translate.message(ctx.guild.id, "captcha", "CREATION_OF_CAPTCHA_PROTECTION")
                         )
 
-                        temporary_role = await ctx.guild.create_role(name="unverified")
+                        verified_role_id = config["captcha_settings"].get("verified_role")
 
+                        if verified_role_id:
+                            verified_role = get(ctx.guild.roles, id=verified_role_id)
+                        else:
+                            verified_role = await ctx.guild.create_role(name="verified")
+
+                        unverified_role = await ctx.guild.create_role(name="unverified")
+
+                        # remove read permissions for unverified role
                         for channel in ctx.guild.channels:
                             if isinstance(channel, nextcord.TextChannel):
 
-                                perms = channel.overwrites_for(temporary_role)
+                                perms = channel.overwrites_for(unverified_role)
                                 perms.read_messages = False
-                                await channel.set_permissions(temporary_role, overwrite=perms)
+                                await channel.set_permissions(unverified_role, overwrite=perms)
 
                             elif isinstance(channel, nextcord.VoiceChannel):
 
-                                perms = channel.overwrites_for(temporary_role)
+                                perms = channel.overwrites_for(unverified_role)
                                 perms.read_messages = False
                                 perms.connect = False
-                                await channel.set_permissions(temporary_role, overwrite=perms)
+                                await channel.set_permissions(unverified_role, overwrite=perms)
 
                         # Create captcha channel
                         captcha_channel = await ctx.guild.create_text_channel('start-here')
 
-                        perms = captcha_channel.overwrites_for(temporary_role)
+                        perms = captcha_channel.overwrites_for(unverified_role)
                         perms.read_messages = True
                         perms.send_messages = False
-                        await captcha_channel.set_permissions(temporary_role, overwrite=perms)
+                        await captcha_channel.set_permissions(unverified_role, overwrite=perms)
 
                         perms = captcha_channel.overwrites_for(ctx.guild.default_role)
                         perms.read_messages = False
@@ -106,25 +115,24 @@ class CaptchaCog(commands.Cog, name="Setup Captcha command"):
                             config["log_channel"] = log_channel.id
 
                         config["captcha"] = True
-                        config["temporary_role"] = temporary_role.id
+                        config["captcha_settings"]["verified_role"] = verified_role.id
+                        config["captcha_settings"]["unverified_role"] = unverified_role.id
                         config["captcha_channel"] = captcha_channel.id
                         config["captcha_images_channel"] = captcha_images_channel.id
 
                         update_config(ctx.guild.id, config)
 
                         embed = nextcord.Embed(
-                            title="**Server Verification**",
-                            description="To prevent bot abuse, new members are required to verify in this server. \n\n"
-                                        "__Please complete the verification promptly, or you risk being kicked from "
-                                        "the server.__\n\nPress the button below to begin the verification process",
+                            title=config["captcha_settings"]["title"],
+                            description=config["captcha_settings"]["description"],
                             color=0x2fa737
                         )
                         embed.set_author(
-                            name="",
-                            icon_url=""
+                            name=config["captcha_settings"]["author_name"],
+                            icon_url=config["captcha_settings"]["author_icon"]
                         )
                         embed.set_thumbnail(
-                            url=""
+                            url=config["captcha_settings"]["thumb"]
                         )
                         await captcha_channel.send(embed=embed, view=VerifyMeView())
 
@@ -182,10 +190,10 @@ class CaptchaCog(commands.Cog, name="Setup Captcha command"):
                     # Delete all
                     not_deleted = []
                     try:
-                        temporary_role = get(ctx.guild.roles, id=config["temporary_role"])
-                        await temporary_role.delete()
+                        unverified_role = get(ctx.guild.roles, id=config["captcha_settings"]["unverified_role"])
+                        await unverified_role.delete()
                     except (HTTPException, AttributeError, KeyError):
-                        not_deleted.append("temporary_role")
+                        not_deleted.append("unverified_role")
                     try:
                         captcha_channel = self.bot.get_channel(config["captcha_channel"])
                         await captcha_channel.delete()

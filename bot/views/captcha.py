@@ -234,7 +234,13 @@ class VerifyMeView(nextcord.ui.View, BaseCaptchaView):
         await captcha_view.wait()
 
         if captcha_view.captcha_valid:
-            user_temporary_role = get(interaction.user.guild.roles, id=config["temporary_role"])
-            await interaction.user.remove_roles(user_temporary_role)
+            # remove unverified role add verified role (or custom)
+            verified_role = get(interaction.user.guild.roles, id=config["captcha_settings"]["verified_role"])
+            await interaction.user.add_roles(verified_role)
+
+            unverified_role = get(interaction.user.guild.roles, id=config["captcha_settings"]["unverified_role"])
+            await interaction.user.remove_roles(unverified_role)
+
+            self.current_users.remove(interaction.user.id)
 
         self.stop()
