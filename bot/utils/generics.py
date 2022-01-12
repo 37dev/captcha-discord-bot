@@ -2,8 +2,6 @@ import asyncio
 import json
 import secrets
 
-import nextcord
-
 
 def get_guild_prefix(bot, message):
     if not message.guild:
@@ -73,8 +71,7 @@ def system_rng():
     return rng
 
 
-async def get_member_roles(member, guild):
-    member = guild.get_member(member.id)
+async def get_member_roles(member):
     member_role_ids = [role.id for role in member.roles]
     return member_role_ids
 
@@ -83,13 +80,21 @@ async def auto_kick(channel, member, message_after_minutes=2, kick_after_minutes
     message_after_minutes *= 60
     kick_after_minutes *= 60
 
+    task_started_time = member.joined_at
+
     config = get_config(channel.guild.id)
 
     verified_role_id = config["captcha_settings"].get("verified_role")
 
     await asyncio.sleep(message_after_minutes)
 
-    member_role_ids = await get_member_roles(member, channel.guild)
+    member = channel.guild.get_member(member.id)
+
+    if not member or member.joined_at > task_started_time:
+        return
+
+    member_role_ids = await get_member_roles(member)
+
     if verified_role_id in member_role_ids:
         return
 
@@ -101,7 +106,13 @@ async def auto_kick(channel, member, message_after_minutes=2, kick_after_minutes
     await asyncio.sleep(kick_after_minutes)
 
     # need to refresh member as it may change and old instance wont have new role
-    member_role_ids = await get_member_roles(member, channel.guild)
+    member = channel.guild.get_member(member.id)
+
+    if not member or member.joined_at > task_started_time:
+        return
+
+    member_role_ids = await get_member_roles(member)
+
     if verified_role_id in member_role_ids:
         return
 
