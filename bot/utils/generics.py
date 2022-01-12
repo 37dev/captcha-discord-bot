@@ -34,8 +34,8 @@ def get_config(guild_id):
             "prefix": "?",
             "language": "english",
             "captcha": False,
-            "captcha_channel": False,
-            "captcha_images_channel": False,
+            "captcha_channel": "",
+            "captcha_logs": "",
             "log_channel": 1,
             "captcha_settings": {
                 "title": "**Server Verification**",
@@ -76,19 +76,19 @@ async def get_member_roles(member):
     return member_role_ids
 
 
-async def auto_kick(channel, member, message_after_minutes=2, kick_after_minutes=2):
+async def auto_kick(guild, member, message_after_minutes=2, kick_after_minutes=2):
     message_after_minutes *= 60
     kick_after_minutes *= 60
 
     task_started_time = member.joined_at
 
-    config = get_config(channel.guild.id)
+    config = get_config(guild.id)
 
     verified_role_id = config["captcha_settings"].get("verified_role")
 
     await asyncio.sleep(message_after_minutes)
 
-    member = channel.guild.get_member(member.id)
+    member = guild.get_member(member.id)
 
     if not member or member.joined_at > task_started_time:
         return
@@ -106,7 +106,7 @@ async def auto_kick(channel, member, message_after_minutes=2, kick_after_minutes
     await asyncio.sleep(kick_after_minutes)
 
     # need to refresh member as it may change and old instance wont have new role
-    member = channel.guild.get_member(member.id)
+    member = guild.get_member(member.id)
 
     if not member or member.joined_at > task_started_time:
         return
@@ -117,3 +117,11 @@ async def auto_kick(channel, member, message_after_minutes=2, kick_after_minutes
         return
 
     await member.kick()
+
+
+async def audit_captcha_tries(guild, member, captcha_state):
+    config = get_config(guild.id)
+    captcha_logs_channel = guild.get_channel(config["captcha_logs"])
+    await captcha_logs_channel.send(
+        f"Captcha Audit: User {member.mention} has {captcha_state.name} the captcha."
+    )

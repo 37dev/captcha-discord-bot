@@ -18,7 +18,7 @@ class OnJoinCog(commands.Cog, name="on join"):
         config = get_config(member.guild.id)
         captcha_channel = self.bot.get_channel(config["captcha_channel"])
 
-        asyncio.create_task(auto_kick(captcha_channel, member))
+        asyncio.create_task(auto_kick(captcha_channel.guild, member))
 
         if config["captcha"]:
 

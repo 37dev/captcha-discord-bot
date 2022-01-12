@@ -99,11 +99,11 @@ class CaptchaCog(commands.Cog, name="Setup Captcha command"):
                         await captcha_channel.set_permissions(ctx.guild.default_role, overwrite=perms)
 
                         # Create captcha images channel
-                        captcha_images_channel = await ctx.guild.create_text_channel('captcha-images-channel')
-                        perms = captcha_images_channel.overwrites_for(ctx.guild.default_role)
+                        captcha_logs = await ctx.guild.create_text_channel('captcha-logs')
+                        perms = captcha_logs.overwrites_for(ctx.guild.default_role)
                         perms.read_messages = False
                         perms.send_messages = False
-                        await captcha_images_channel.set_permissions(ctx.guild.default_role, overwrite=perms)
+                        await captcha_logs.set_permissions(ctx.guild.default_role, overwrite=perms)
 
                         # Create log channel
                         if config["log_channel"] is False:
@@ -118,7 +118,7 @@ class CaptchaCog(commands.Cog, name="Setup Captcha command"):
                         config["captcha_settings"]["verified_role"] = verified_role.id
                         config["captcha_settings"]["unverified_role"] = unverified_role.id
                         config["captcha_channel"] = captcha_channel.id
-                        config["captcha_images_channel"] = captcha_images_channel.id
+                        config["captcha_logs"] = captcha_logs.id
 
                         update_config(ctx.guild.id, config)
 
@@ -201,10 +201,10 @@ class CaptchaCog(commands.Cog, name="Setup Captcha command"):
                         not_deleted.append("captcha_channel")
 
                     try:
-                        captcha_images_channel = self.bot.get_channel(config["captcha_images_channel"])
-                        await captcha_images_channel.delete()
+                        captcha_logs = self.bot.get_channel(config["captcha_logs"])
+                        await captcha_logs.delete()
                     except (HTTPException, AttributeError, KeyError):
-                        not_deleted.append("captcha_images_channel")
+                        not_deleted.append("captcha_logs")
 
                     # Add modifications
                     config["captcha_channel"] = False

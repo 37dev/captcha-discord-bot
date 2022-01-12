@@ -8,7 +8,8 @@ from typing import List
 from nextcord.utils import get
 
 from bot.utils.captcha import Captcha
-from bot.utils.generics import system_rng, get_config
+from bot.utils.enums import CaptchaStateEnum
+from bot.utils.generics import system_rng, get_config, audit_captcha_tries
 
 
 class BaseCaptchaView:
@@ -27,9 +28,9 @@ class BaseCaptchaView:
     async def get_captcha_image_url(captcha, interaction):
         config = get_config(interaction.guild.id)
 
-        captcha_images_channel = interaction.guild.get_channel(config["captcha_images_channel"])
+        captcha_logs = interaction.guild.get_channel(config["captcha_logs"])
 
-        captcha_image_embed = await captcha_images_channel.send(file=captcha.file)
+        captcha_image_embed = await captcha_logs.send(file=captcha.file)
         image_url = captcha_image_embed.attachments[0].proxy_url
         await captcha_image_embed.delete()
 
@@ -48,16 +49,19 @@ class CaptchaButton(nextcord.ui.Button['CaptchaView']):
         # check if last column was pressed
         if self.view.is_captcha_completed:
             if self.view.is_captcha_valid:
+                await audit_captcha_tries(interaction.guild, interaction.user, CaptchaStateEnum.PASSED)
                 self.view.captcha_valid = True
                 await self.view.captcha_complete(interaction)
                 self.view.stop()
                 return
 
             if self.view.can_retry:
+                await audit_captcha_tries(interaction.guild, interaction.user, CaptchaStateEnum.RETRIED)
                 self.view.attempt += 1
                 await self.view.new_captcha(interaction=interaction)
                 return
             else:
+                await audit_captcha_tries(interaction.guild, interaction.user, CaptchaStateEnum.FAILED)
                 await self.view.captcha_kick(interaction)
                 self.view.stop()
                 return
@@ -75,6 +79,7 @@ class NewCaptchaButton(nextcord.ui.Button['CaptchaView']):
         )
 
     async def callback(self, interaction):
+        await audit_captcha_tries(interaction.guild, interaction.user, CaptchaStateEnum.RETRIED)
         await self.view.new_captcha(interaction=interaction)
         return
 
@@ -245,6 +250,8 @@ class VerifyMeView(nextcord.ui.View, BaseCaptchaView):
         captcha_image_url = await self.get_captcha_image_url(captcha, interaction)
         captcha_embed = self.get_captcha_embed(captcha_view=captcha_view)
         captcha_embed.set_image(url=captcha_image_url)
+
+        await audit_captcha_tries(interaction.guild, interaction.user, CaptchaStateEnum.STARTED)
 
         await interaction.response.send_message(view=captcha_view, embed=captcha_embed, ephemeral=True)
         self.current_users.add(interaction.user.id)
