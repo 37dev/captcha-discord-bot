@@ -42,9 +42,8 @@ class CaptchaButton(nextcord.ui.Button['CaptchaView']):
         self.column = column
 
     async def callback(self, interaction):
-        self.view.disable_clicked_column(column=self.column)
+        self.view.set_column_progress(column=self.column, clicked_column_button_label=self.label)
         self.view.clicked_letters.append(self.label)
-        self.style = nextcord.ButtonStyle.danger
 
         # check if last column was pressed
         if self.view.is_captcha_completed:
@@ -158,13 +157,31 @@ class CaptchaView(nextcord.ui.View, BaseCaptchaView):
         random_letters[captcha_letter_pos] = column_captcha_letter
         return random_letters
 
-    def disable_clicked_column(self, column):
-        # ignore retry button
-        for children in self.children[:-1]:
-            if children.column == column:
-                children.disabled = True
+    def set_column_progress(self, column, clicked_column_button_label):
+        captcha_letters = self.captcha.text.split()
 
-        self.disabled_columns += 1
+        # if user clicks wrong btn, complete captcha and disable all columns
+        if captcha_letters[column] != clicked_column_button_label:
+            # ignore retry button
+            for children in self.children[:-1]:
+                children.disabled = True
+                if children.label == captcha_letters[column]:
+                    children.style = nextcord.ButtonStyle.success
+                else:
+                    children.style = nextcord.ButtonStyle.danger
+
+            self.disabled_columns = self.columns
+
+        else:
+            for children in self.children[:-1]:
+                if children.column == column:
+                    children.disabled = True
+                    if children.label == captcha_letters[column]:
+                        children.style = nextcord.ButtonStyle.success
+                    else:
+                        children.style = nextcord.ButtonStyle.danger
+
+            self.disabled_columns += 1
 
     @staticmethod
     async def captcha_kick(interaction, timer=5):
@@ -242,5 +259,3 @@ class VerifyMeView(nextcord.ui.View, BaseCaptchaView):
             await interaction.user.remove_roles(unverified_role)
 
             self.current_users.remove(interaction.user.id)
-
-        self.stop()
