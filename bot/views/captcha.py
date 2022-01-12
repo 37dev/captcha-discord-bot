@@ -8,7 +8,8 @@ from typing import List
 from nextcord.utils import get
 
 from bot.utils.captcha import Captcha
-from bot.utils.generics import system_rng, get_config
+from bot.utils.enums import CaptchaStateEnum
+from bot.utils.generics import system_rng, get_config, audit_captcha_tries
 
 
 class BaseCaptchaView:
@@ -27,9 +28,9 @@ class BaseCaptchaView:
     async def get_captcha_image_url(captcha, interaction):
         config = get_config(interaction.guild.id)
 
-        captcha_images_channel = interaction.guild.get_channel(config["captcha_images_channel"])
+        captcha_logs = interaction.guild.get_channel(config["captcha_logs"])
 
-        captcha_image_embed = await captcha_images_channel.send(file=captcha.file)
+        captcha_image_embed = await captcha_logs.send(file=captcha.file)
         image_url = captcha_image_embed.attachments[0].proxy_url
         await captcha_image_embed.delete()
 
@@ -42,23 +43,25 @@ class CaptchaButton(nextcord.ui.Button['CaptchaView']):
         self.column = column
 
     async def callback(self, interaction):
-        self.view.disable_clicked_column(column=self.column)
+        self.view.set_column_progress(column=self.column, clicked_column_button_label=self.label)
         self.view.clicked_letters.append(self.label)
-        self.style = nextcord.ButtonStyle.danger
 
         # check if last column was pressed
         if self.view.is_captcha_completed:
             if self.view.is_captcha_valid:
+                await audit_captcha_tries(interaction.guild, interaction.user, CaptchaStateEnum.PASSED)
                 self.view.captcha_valid = True
                 await self.view.captcha_complete(interaction)
                 self.view.stop()
                 return
 
             if self.view.can_retry:
+                await audit_captcha_tries(interaction.guild, interaction.user, CaptchaStateEnum.RETRIED)
                 self.view.attempt += 1
                 await self.view.new_captcha(interaction=interaction)
                 return
             else:
+                await audit_captcha_tries(interaction.guild, interaction.user, CaptchaStateEnum.FAILED)
                 await self.view.captcha_kick(interaction)
                 self.view.stop()
                 return
@@ -76,6 +79,7 @@ class NewCaptchaButton(nextcord.ui.Button['CaptchaView']):
         )
 
     async def callback(self, interaction):
+        await audit_captcha_tries(interaction.guild, interaction.user, CaptchaStateEnum.RETRIED)
         await self.view.new_captcha(interaction=interaction)
         return
 
@@ -158,13 +162,31 @@ class CaptchaView(nextcord.ui.View, BaseCaptchaView):
         random_letters[captcha_letter_pos] = column_captcha_letter
         return random_letters
 
-    def disable_clicked_column(self, column):
-        # ignore retry button
-        for children in self.children[:-1]:
-            if children.column == column:
-                children.disabled = True
+    def set_column_progress(self, column, clicked_column_button_label):
+        captcha_letters = self.captcha.text.split()
 
-        self.disabled_columns += 1
+        # if user clicks wrong btn, complete captcha and disable all columns
+        if captcha_letters[column] != clicked_column_button_label:
+            # ignore retry button
+            for children in self.children[:-1]:
+                children.disabled = True
+                if children.label == captcha_letters[column]:
+                    children.style = nextcord.ButtonStyle.success
+                else:
+                    children.style = nextcord.ButtonStyle.danger
+
+            self.disabled_columns = self.columns
+
+        else:
+            for children in self.children[:-1]:
+                if children.column == column:
+                    children.disabled = True
+                    if children.label == captcha_letters[column]:
+                        children.style = nextcord.ButtonStyle.success
+                    else:
+                        children.style = nextcord.ButtonStyle.danger
+
+            self.disabled_columns += 1
 
     @staticmethod
     async def captcha_kick(interaction, timer=5):
@@ -229,12 +251,18 @@ class VerifyMeView(nextcord.ui.View, BaseCaptchaView):
         captcha_embed = self.get_captcha_embed(captcha_view=captcha_view)
         captcha_embed.set_image(url=captcha_image_url)
 
+        await audit_captcha_tries(interaction.guild, interaction.user, CaptchaStateEnum.STARTED)
+
         await interaction.response.send_message(view=captcha_view, embed=captcha_embed, ephemeral=True)
         self.current_users.add(interaction.user.id)
         await captcha_view.wait()
 
         if captcha_view.captcha_valid:
-            user_temporary_role = get(interaction.user.guild.roles, id=config["temporary_role"])
-            await interaction.user.remove_roles(user_temporary_role)
+            # remove unverified role add verified role (or custom)
+            verified_role = get(interaction.user.guild.roles, id=config["captcha_settings"]["verified_role"])
+            await interaction.user.add_roles(verified_role)
 
-        self.stop()
+            unverified_role = get(interaction.user.guild.roles, id=config["captcha_settings"]["unverified_role"])
+            await interaction.user.remove_roles(unverified_role)
+
+            self.current_users.remove(interaction.user.id)

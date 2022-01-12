@@ -1,3 +1,4 @@
+import asyncio
 import json
 import secrets
 
@@ -33,12 +34,20 @@ def get_config(guild_id):
             "prefix": "?",
             "language": "english",
             "captcha": False,
-            "captcha_channel": False,
-            "captcha_images_channel": False,
+            "captcha_channel": "",
+            "captcha_logs": "",
             "log_channel": 1,
-            "temporary_role": 1,
-            "role_given_after_captcha": False,
-            "min_account_date": 86400
+            "captcha_settings": {
+                "title": "**Server Verification**",
+                "description": "To prevent bot abuse, new members are required to verify in this server. \n\n__Please "
+                               "complete the verification promptly, or you risk being kicked from the "
+                               "server.__\n\nPress the button below to begin the verification process",
+                "author_name": "",
+                "verified_role": "",
+                "unverified_role": "",
+                "author_icon": "",
+                "thumb": ""
+            }
         }
         update_config(guild_id, default_guild_config)
         return default_guild_config
@@ -60,3 +69,59 @@ def update_config(guild_id, guild_config):
 def system_rng():
     rng = secrets.SystemRandom()
     return rng
+
+
+async def get_member_roles(member):
+    member_role_ids = [role.id for role in member.roles]
+    return member_role_ids
+
+
+async def auto_kick(guild, member, message_after_minutes=2, kick_after_minutes=2):
+    message_after_minutes *= 60
+    kick_after_minutes *= 60
+
+    task_started_time = member.joined_at
+
+    config = get_config(guild.id)
+
+    verified_role_id = config["captcha_settings"].get("verified_role")
+
+    await asyncio.sleep(message_after_minutes)
+
+    member = guild.get_member(member.id)
+
+    if not member or member.joined_at > task_started_time:
+        return
+
+    member_role_ids = await get_member_roles(member)
+
+    if verified_role_id in member_role_ids:
+        return
+
+    await member.send(
+        f"{member.mention} - You will be kicked from the server in {kick_after_minutes} seconds.\n"
+        f"Please, solve the captcha."
+    )
+
+    await asyncio.sleep(kick_after_minutes)
+
+    # need to refresh member as it may change and old instance wont have new role
+    member = guild.get_member(member.id)
+
+    if not member or member.joined_at > task_started_time:
+        return
+
+    member_role_ids = await get_member_roles(member)
+
+    if verified_role_id in member_role_ids:
+        return
+
+    await member.kick()
+
+
+async def audit_captcha_tries(guild, member, captcha_state):
+    config = get_config(guild.id)
+    captcha_logs_channel = guild.get_channel(config["captcha_logs"])
+    await captcha_logs_channel.send(
+        f"Captcha Audit: User {member.mention} has {captcha_state.name} the captcha."
+    )

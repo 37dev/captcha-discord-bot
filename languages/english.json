@@ -104,7 +104,7 @@
     "settings": {
         "SERVER_SETTINGS": "**SERVER SETTINGS**",
         "CAPTCHA_PROTECTION": "**CAPTCHA PROTECTION** - `({0}setup <on/off>)`",
-        "CAPTCHA_PROTECTION_DESCRIPTION": "Captcha enabled : **{0}**\nCaptcha channel : {1}\nBot logs : {2}\nTemporary role : <@&{3}>",
+        "CAPTCHA_PROTECTION_DESCRIPTION": "Captcha enabled : **{0}**\nCaptcha channel : {1}\nBot logs : {2}",
         "ROLE_GIVEN_AFTER_CAPTCHA": "**ROLE GIVEN AFTER CAPTCHA** - `({0}give_role_after_captcha <role ID/off>)`",
         "ROLE_GIVEN_AFTER_CAPTCHA_DESCRIPTION": "Role given after captcha : **{0}**",
         "MINIMUM_ACCOUNT_AGE": "**MINIMUM ACCOUNT AGE** - `({0}min_account_age <number (hours)>)`",
@@ -118,7 +118,7 @@
     },
     "captcha": {
         "DO_YOU_WANT_TO_SET_UP_THE_CAPTCHA_PROTECTION": "**ARE YOU SURE DO YOU WANT TO SET UP THE CAPTCHA PROTECTION ?**",
-        "DO_YOU_WANT_TO_SET_UP_THE_CAPTCHA_PROTECTION_DESCRIPTION": "**Set up the captcha protection includes the creation of :**\n\n- captcha verification channel\n- captcha image channel\n- temporary role (before that the captcha was passed)",
+        "DO_YOU_WANT_TO_SET_UP_THE_CAPTCHA_PROTECTION_DESCRIPTION": "**Set up the captcha protection includes the creation of :**\n\n- captcha verification channel\n- captcha image channel\n",
         "SET_UP_ABANDONED": "The set up of the captcha protection was abandoned.",
         "CREATION_OF_CAPTCHA_PROTECTION": "Creating captcha protection...",
         "CAPTCHA_WAS_SET_UP_WITH_SUCCESS": "**CAPTCHA WAS SET UP WITH SUCCESS**",
@@ -126,7 +126,7 @@
         "TIME_IS_OUT": "**TIME IS OUT**",
         "USER_HAS_EXCEEDED_THE_RESPONSE_TIME": "{0} has exceeded the response time (30s).",
         "DO_YOU_WANT_TO_DELETE_THE_CAPTCHA_PROTECTION": "**ARE YOU SURE DO YOU WANT TO DELETE THE CAPTCHA PROTECTION ?**",
-        "DO_YOU_WANT_TO_DELETE_THE_CAPTCHA_PROTECTION_DESCRIPTION": "**Delete of the captcha protection includes the deletion of :**\n\n- captcha verification channel\n- captcha image channel\n- temporary role (before that the captcha was passed)",
+        "DO_YOU_WANT_TO_DELETE_THE_CAPTCHA_PROTECTION_DESCRIPTION": "**Delete of the captcha protection includes the deletion of :**\n\n- captcha verification channel\n- captcha image channel\n",
         "DELETE_ABANDONED": "The deletion of captcha protection was abandoned.",
         "DELETION_OF_THE_CAPTCHA_PROTECTION": "Deletion of captcha protection...",
         "CAPTCHA_WAS_DELETED_WITH_SUCCESS": "CAPTCHA WAS DELETED WITH SUCCESS",
